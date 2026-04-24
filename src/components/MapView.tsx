@@ -33,7 +33,7 @@ export default function MapView() {
   const [keyInput, setKeyInput] = useState('');
   const [reloadTick, setReloadTick] = useState(0);
 
-  const { photos, select, route, routeLoading, selectedId, focusTick } = usePhotoStore();
+  const { photos, route, routeLoading, selectedId, focusTick } = usePhotoStore();
 
   // mount / switch provider
   useEffect(() => {
@@ -50,7 +50,10 @@ export default function MapView() {
 
     adapter.mount(containerRef.current).then(() => {
       if (cancelled) return;
-      adapter.setMarkers(photos, (p) => select(p.id));
+      adapter.setMarkers(photos, (p) => {
+        // Clicking a map marker also centers on it
+        usePhotoStore.getState().focusOnSelected(p.id);
+      });
       if (route?.path) adapter.setRoute(route.path);
       adapter.fitBounds(photos);
     }).catch((e) => !cancelled && setError(e.message));
@@ -59,13 +62,14 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, reloadTick]);
 
-  // Update markers when photos change
+  // Update markers when photos change (but keep current map center, don't fit)
   useEffect(() => {
     const a = adapterRef.current;
     if (!a) return;
-    a.setMarkers(photos, (p) => select(p.id));
-    a.fitBounds(photos);
-  }, [photos, select]);
+    a.setMarkers(photos, (p) => usePhotoStore.getState().focusOnSelected(p.id));
+    // Only auto-fit when no photo is focused (i.e. initial load or full reset)
+    if (!selectedId) a.fitBounds(photos);
+  }, [photos, selectedId]);
 
   // Update route polyline when route changes
   useEffect(() => {
@@ -74,13 +78,19 @@ export default function MapView() {
     a.setRoute(route?.path ?? []);
   }, [route]);
 
-  // Pan to selected photo when focus is requested
+  // Pan to selected photo when focus is requested (focusTick bumps on every click,
+  // even when selecting the same id again)
   useEffect(() => {
+    if (focusTick === 0) return;
     const a = adapterRef.current;
     if (!a || !selectedId) return;
     const p = photos.find((ph) => ph.id === selectedId);
-    if (p?.hasGps) a.centerOn(p.lat!, p.lng!);
-  }, [focusTick, selectedId, photos]);
+    if (p?.hasGps) {
+      console.log('[focus] centering on', p.name, p.lat, p.lng);
+      a.centerOn(p.lat!, p.lng!);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTick]);
 
   const saveKey = () => {
     const v = keyInput.trim();

@@ -101,8 +101,22 @@ export class KakaoMapAdapter implements MapAdapter {
     const { kakao } = window;
     if (!this.map) return;
     const pos = new kakao.maps.LatLng(lat, lng);
-    this.map.setLevel(zoomLevel, { animate: true });
-    this.map.panTo(pos);
+
+    // 1) Sync set level first (no animate) so panTo isn't blocked by zoom animation.
+    const current = this.map.getLevel();
+    if (current > zoomLevel) this.map.setLevel(zoomLevel);
+
+    // 2) Try panTo first for smooth animation, force setCenter as hard fallback.
+    try {
+      this.map.panTo(pos);
+    } catch {
+      this.map.setCenter(pos);
+    }
+
+    // 3) Hard-set center shortly after in case panTo was intercepted (e.g. during tile load).
+    window.setTimeout(() => {
+      try { this.map?.setCenter(pos); } catch { /* ignore */ }
+    }, 350);
   }
 
   destroy(): void {
