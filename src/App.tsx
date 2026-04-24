@@ -13,16 +13,16 @@ export default function App() {
         </p>
       </header>
 
-      <main className="flex-1 grid md:grid-cols-[1fr_360px] gap-3 p-3">
-        <section className="flex flex-col gap-3 min-h-[420px]">
+      <main className="flex-1 grid md:grid-cols-[360px_1fr] gap-3 p-3">
+        <aside className="bg-white rounded-lg border border-slate-200 p-3 overflow-y-auto max-h-[calc(100vh-120px)] order-1">
+          <PhotoList />
+        </aside>
+        <section className="flex flex-col gap-3 min-h-[420px] order-2">
           <PhotoUploader />
           <div className="flex-1 min-h-[360px]">
             <MapView />
           </div>
         </section>
-        <aside className="bg-white rounded-lg border border-slate-200 p-3 overflow-y-auto max-h-[calc(100vh-120px)]">
-          <PhotoList />
-        </aside>
       </main>
 
       <PhotoInfoPanel />
