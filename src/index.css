@@ -17,3 +17,59 @@ html, body, #root { height: 100%; }
   border: 2px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
 }
+
+.photo-marker {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: 3px solid #2563eb;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+  overflow: visible;
+  cursor: pointer;
+  transform: translate(-50%, -100%);
+  transition: transform .15s ease;
+}
+.photo-marker:hover { transform: translate(-50%, -100%) scale(1.08); z-index: 10; }
+.photo-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+  display: block;
+}
+.photo-marker::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 10px solid #2563eb;
+}
+.photo-marker .badge {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  min-width: 22px; height: 22px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+
+/* drop overlay */
+.drop-active {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+}

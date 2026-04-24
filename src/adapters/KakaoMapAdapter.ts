@@ -23,8 +23,8 @@ function loadKakaoSdk(appKey: string): Promise<void> {
 
 export class KakaoMapAdapter implements MapAdapter {
   private map: any = null;
-  private markers: any[] = [];
   private overlays: any[] = [];
+  private polyline: any = null;
 
   constructor(private readonly appKey: string) {}
 
@@ -33,7 +33,7 @@ export class KakaoMapAdapter implements MapAdapter {
     await loadKakaoSdk(this.appKey);
     const { kakao } = window;
     this.map = new kakao.maps.Map(container, {
-      center: new kakao.maps.LatLng(37.5665, 126.9780), // Seoul City Hall
+      center: new kakao.maps.LatLng(37.5665, 126.9780),
       level: 5,
     });
   }
@@ -43,20 +43,40 @@ export class KakaoMapAdapter implements MapAdapter {
     this.clearMarkers();
     if (!this.map) return;
 
-    photos.filter((p) => p.hasGps).forEach((p) => {
+    const gpsPhotos = photos.filter((p) => p.hasGps);
+
+    // Route polyline connecting photos in order
+    if (gpsPhotos.length >= 2) {
+      const path = gpsPhotos.map((p) => new kakao.maps.LatLng(p.lat!, p.lng!));
+      this.polyline = new kakao.maps.Polyline({
+        path,
+        strokeWeight: 4,
+        strokeColor: '#2563eb',
+        strokeOpacity: 0.85,
+        strokeStyle: 'solid',
+      });
+      this.polyline.setMap(this.map);
+    }
+
+    // Photo thumbnail markers
+    gpsPhotos.forEach((p) => {
       const pos = new kakao.maps.LatLng(p.lat!, p.lng!);
-      const content = document.createElement('div');
-      content.className = 'num-marker';
-      content.textContent = String(p.index ?? '?');
+      const wrap = document.createElement('div');
+      wrap.className = 'photo-marker';
+      wrap.innerHTML = `
+        <span class="badge">${p.index ?? '?'}</span>
+        <img src="${p.previewUrl}" alt="" />
+      `;
+      wrap.addEventListener('click', (e) => { e.stopPropagation(); onClick(p); });
 
       const overlay = new kakao.maps.CustomOverlay({
         position: pos,
-        content,
-        yAnchor: 1,
+        content: wrap,
+        xAnchor: 0,
+        yAnchor: 0,
         clickable: true,
       });
       overlay.setMap(this.map);
-      content.addEventListener('click', () => onClick(p));
       this.overlays.push(overlay);
     });
   }
@@ -73,7 +93,7 @@ export class KakaoMapAdapter implements MapAdapter {
     }
     const bounds = new kakao.maps.LatLngBounds();
     gps.forEach((p) => bounds.extend(new kakao.maps.LatLng(p.lat!, p.lng!)));
-    this.map.setBounds(bounds);
+    this.map.setBounds(bounds, 60, 60, 60, 60); // padding for thumbnails
   }
 
   destroy(): void {
@@ -84,7 +104,6 @@ export class KakaoMapAdapter implements MapAdapter {
   private clearMarkers() {
     this.overlays.forEach((o) => o.setMap(null));
     this.overlays = [];
-    this.markers.forEach((m) => m.setMap(null));
-    this.markers = [];
+    if (this.polyline) { this.polyline.setMap(null); this.polyline = null; }
   }
 }

@@ -20,10 +20,10 @@ function loadNaverSdk(clientId: string): Promise<void> {
   return sdkPromise;
 }
 
-/** Stub implementation for future extension. Interface-compatible with KakaoMapAdapter. */
 export class NaverMapAdapter implements MapAdapter {
   private map: any = null;
   private markers: any[] = [];
+  private polyline: any = null;
 
   constructor(private readonly clientId: string) {}
 
@@ -40,14 +40,30 @@ export class NaverMapAdapter implements MapAdapter {
     const { naver } = window;
     this.markers.forEach((m) => m.setMap(null));
     this.markers = [];
-    photos.filter((p) => p.hasGps).forEach((p) => {
+    if (this.polyline) { this.polyline.setMap(null); this.polyline = null; }
+    if (!this.map) return;
+
+    const gps = photos.filter((p) => p.hasGps);
+
+    if (gps.length >= 2) {
+      this.polyline = new naver.maps.Polyline({
+        path: gps.map((p) => new naver.maps.LatLng(p.lat!, p.lng!)),
+        strokeColor: '#2563eb',
+        strokeWeight: 4,
+        strokeOpacity: 0.85,
+        map: this.map,
+      });
+    }
+
+    gps.forEach((p) => {
+      const html = `<div class="photo-marker">
+        <span class="badge">${p.index ?? '?'}</span>
+        <img src="${p.previewUrl}" alt="" />
+      </div>`;
       const m = new naver.maps.Marker({
         position: new naver.maps.LatLng(p.lat!, p.lng!),
         map: this.map,
-        icon: {
-          content: `<div class="num-marker">${p.index ?? '?'}</div>`,
-          anchor: new naver.maps.Point(16, 16),
-        },
+        icon: { content: html, anchor: new naver.maps.Point(28, 56) },
       });
       naver.maps.Event.addListener(m, 'click', () => onClick(p));
       this.markers.push(m);
@@ -66,6 +82,7 @@ export class NaverMapAdapter implements MapAdapter {
   destroy(): void {
     this.markers.forEach((m) => m.setMap(null));
     this.markers = [];
+    if (this.polyline) { this.polyline.setMap(null); this.polyline = null; }
     this.map = null;
   }
 }
