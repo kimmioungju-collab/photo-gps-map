@@ -10,6 +10,7 @@ export interface PhotoMeta {
   hasGps: boolean;
   index?: number;          // 1-based order on map (only for GPS photos)
   uploadOrder: number;     // fallback when takenAt missing
+  debug?: string;          // why GPS extraction failed (for user feedback)
 }
 
 export interface LatLng {

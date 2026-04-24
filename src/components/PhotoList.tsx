@@ -57,13 +57,27 @@ export default function PhotoList() {
                   ?
                 </span>
                 <img src={p.previewUrl} alt="" className="w-10 h-10 object-cover rounded" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{p.name}</div>
                   <div className="text-xs text-slate-500">{formatDate(p.takenAt)}</div>
+                  {p.debug && (
+                    <div className="text-[10px] text-amber-600 truncate" title={p.debug}>
+                      ⚠ {p.debug}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-slate-400">
+                    {(p.file.size / 1024 / 1024).toFixed(1)}MB · {p.file.type || '?'}
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
+          <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+            💡 iOS 사진이 HEIC 포맷이면 EXIF가 안 읽힐 수 있습니다.<br/>
+            설정 → 카메라 → 포맷 → <b>호환성 우선</b>으로 바꾸거나,<br/>
+            전송 시 <b>원본 그대로</b> / <b>모든 사진 데이터</b> 옵션 선택하세요.<br/>
+            카톡/텔레그램으로 받은 사진은 GPS가 삭제됩니다 — 갤러리에서 직접 선택!
+          </p>
         </section>
       )}
     </div>

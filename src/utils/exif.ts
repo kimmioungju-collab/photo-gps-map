@@ -10,32 +10,57 @@ export async function extractPhotoMeta(
   let lng: number | null = null;
   let altitude: number | null = null;
   let takenAt: Date | null = null;
+  let debug = '';
 
+  // Try the dedicated gps() helper first — most reliable for GPS across JPEG/HEIC/TIFF.
   try {
-    const data = await exifr.parse(file, {
-      gps: true,
-      pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate',
-             'GPSLatitude', 'GPSLongitude', 'GPSAltitude',
-             'latitude', 'longitude'],
-    });
-    if (data) {
-      if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-        lat = data.latitude;
-        lng = data.longitude;
-      }
-      if (typeof data.GPSAltitude === 'number') altitude = data.GPSAltitude;
-      const dt = data.DateTimeOriginal || data.CreateDate || data.ModifyDate;
-      if (dt instanceof Date && !isNaN(dt.getTime())) takenAt = dt;
+    const gps = await exifr.gps(file);
+    if (gps && typeof gps.latitude === 'number' && typeof gps.longitude === 'number') {
+      lat = gps.latitude;
+      lng = gps.longitude;
     }
   } catch (err) {
-    // swallow — some files (HEIC in Safari, stripped EXIF, etc.) may fail
-    console.warn('[exif] parse failed for', file.name, err);
+    debug += `gps() fail: ${(err as Error).message}; `;
+  }
+
+  // Then full parse for date + altitude + fallback.
+  try {
+    const data = await exifr.parse(file, {
+      tiff: true, exif: true, gps: true, xmp: true,
+      translateValues: true, reviveValues: true,
+    } as any);
+    if (data) {
+      if (lat === null && typeof data.latitude === 'number') lat = data.latitude;
+      if (lng === null && typeof data.longitude === 'number') lng = data.longitude;
+      if (typeof data.GPSAltitude === 'number') altitude = data.GPSAltitude;
+      const dt = data.DateTimeOriginal || data.CreateDate || data.ModifyDate || data.DateTime;
+      if (dt instanceof Date && !isNaN(dt.getTime())) takenAt = dt;
+      else if (typeof dt === 'string') {
+        const d = new Date(dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3'));
+        if (!isNaN(d.getTime())) takenAt = d;
+      }
+      if (!takenAt) debug += 'no-date-tag; ';
+      if (lat === null) debug += `no-gps-tag (keys: ${Object.keys(data).slice(0,6).join(',')}); `;
+    } else {
+      debug += 'parse-returned-null; ';
+    }
+  } catch (err) {
+    debug += `parse fail: ${(err as Error).message}; `;
   }
 
   const hasGps =
     lat !== null && lng !== null &&
     Number.isFinite(lat) && Number.isFinite(lng) &&
     !(lat === 0 && lng === 0);
+
+  // Fallback: try to read file lastModified for upload order tie-break
+  if (!takenAt && file.lastModified) {
+    const d = new Date(file.lastModified);
+    // only use if it looks reasonable (not epoch)
+    if (d.getFullYear() > 2000) takenAt = d;
+  }
+
+  if (debug) console.warn('[exif]', file.name, debug);
 
   return {
     id: crypto.randomUUID(),
@@ -48,6 +73,7 @@ export async function extractPhotoMeta(
     altitude,
     hasGps,
     uploadOrder,
+    debug: debug || undefined,
   };
 }
 
