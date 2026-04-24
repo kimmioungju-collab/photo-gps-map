@@ -1,4 +1,4 @@
-import type { PhotoMeta } from '../types/photo';
+import type { LatLng, PhotoMeta } from '../types/photo';
 import type { MapAdapter } from './MapAdapter';
 
 declare global {
@@ -40,22 +40,9 @@ export class NaverMapAdapter implements MapAdapter {
     const { naver } = window;
     this.markers.forEach((m) => m.setMap(null));
     this.markers = [];
-    if (this.polyline) { this.polyline.setMap(null); this.polyline = null; }
     if (!this.map) return;
 
-    const gps = photos.filter((p) => p.hasGps);
-
-    if (gps.length >= 2) {
-      this.polyline = new naver.maps.Polyline({
-        path: gps.map((p) => new naver.maps.LatLng(p.lat!, p.lng!)),
-        strokeColor: '#2563eb',
-        strokeWeight: 4,
-        strokeOpacity: 0.85,
-        map: this.map,
-      });
-    }
-
-    gps.forEach((p) => {
+    photos.filter((p) => p.hasGps).forEach((p) => {
       const html = `<div class="photo-marker">
         <span class="badge">${p.index ?? '?'}</span>
         <img src="${p.previewUrl}" alt="" />
@@ -70,6 +57,19 @@ export class NaverMapAdapter implements MapAdapter {
     });
   }
 
+  setRoute(path: LatLng[]): void {
+    const { naver } = window;
+    if (this.polyline) { this.polyline.setMap(null); this.polyline = null; }
+    if (!this.map || path.length < 2) return;
+    this.polyline = new naver.maps.Polyline({
+      path: path.map((p) => new naver.maps.LatLng(p.lat, p.lng)),
+      strokeColor: '#2563eb',
+      strokeWeight: 5,
+      strokeOpacity: 0.9,
+      map: this.map,
+    });
+  }
+
   fitBounds(photos: PhotoMeta[]): void {
     const { naver } = window;
     const gps = photos.filter((p) => p.hasGps);
@@ -77,6 +77,13 @@ export class NaverMapAdapter implements MapAdapter {
     const bounds = new naver.maps.LatLngBounds();
     gps.forEach((p) => bounds.extend(new naver.maps.LatLng(p.lat!, p.lng!)));
     this.map.fitBounds(bounds);
+  }
+
+  centerOn(lat: number, lng: number, zoomLevel = 16): void {
+    const { naver } = window;
+    if (!this.map) return;
+    this.map.setZoom(zoomLevel, true);
+    this.map.panTo(new naver.maps.LatLng(lat, lng));
   }
 
   destroy(): void {

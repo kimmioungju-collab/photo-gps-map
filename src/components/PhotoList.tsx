@@ -9,10 +9,20 @@ function formatGap(ms: number): string {
 }
 
 export default function PhotoList() {
-  const { photos, selectedId, select } = usePhotoStore();
+  const { photos, selectedId, focusOnSelected, select, removeOne } = usePhotoStore();
 
   const gpsPhotos = photos.filter((p) => p.hasGps);
   const noGpsPhotos = photos.filter((p) => !p.hasGps);
+
+  const handleClick = (id: string, hasGps: boolean) => {
+    if (hasGps) focusOnSelected(id);     // also pans the map
+    else select(id);                     // just shows info panel
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('이 사진을 목록에서 제거할까요?')) removeOne(id);
+  };
 
   if (photos.length === 0) {
     return (
@@ -28,7 +38,9 @@ export default function PhotoList() {
         <h3 className="font-semibold text-slate-800 mb-1">
           GPS 포함 ({gpsPhotos.length})
         </h3>
-        <p className="text-[11px] text-slate-500 mb-2">📅 촬영시간 오름차순 정렬</p>
+        <p className="text-[11px] text-slate-500 mb-2">
+          📅 촬영시간순 · 클릭하면 지도 이동
+        </p>
         <ul className="space-y-1">
           {gpsPhotos.map((p, i) => {
             const prev = gpsPhotos[i - 1];
@@ -39,8 +51,8 @@ export default function PhotoList() {
             return (
               <li
                 key={p.id}
-                onClick={() => select(p.id)}
-                className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
+                onClick={() => handleClick(p.id, true)}
+                className={`group flex items-center gap-2 p-2 rounded cursor-pointer ${
                   selectedId === p.id ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-slate-50'
                 }`}
               >
@@ -53,6 +65,13 @@ export default function PhotoList() {
                     {gap !== null && <span className="text-blue-600">{formatGap(gap)}</span>}
                   </div>
                 </div>
+                <button
+                  onClick={(e) => handleDelete(e, p.id)}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 md:opacity-60 hover:!opacity-100
+                             text-slate-400 hover:text-red-500 px-2 py-1 text-lg leading-none transition"
+                  aria-label="사진 삭제"
+                  title="삭제"
+                >×</button>
               </li>
             );
           })}
@@ -68,8 +87,8 @@ export default function PhotoList() {
             {noGpsPhotos.map((p) => (
               <li
                 key={p.id}
-                onClick={() => select(p.id)}
-                className="flex items-center gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer"
+                onClick={() => handleClick(p.id, false)}
+                className="group flex items-center gap-2 p-2 rounded hover:bg-slate-50 cursor-pointer"
               >
                 <span className="w-8 h-8 rounded-full bg-slate-300 text-white flex items-center justify-center text-xs shrink-0">
                   ?
@@ -87,14 +106,21 @@ export default function PhotoList() {
                     {(p.file.size / 1024 / 1024).toFixed(1)}MB · {p.file.type || '?'}
                   </div>
                 </div>
+                <button
+                  onClick={(e) => handleDelete(e, p.id)}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 md:opacity-60 hover:!opacity-100
+                             text-slate-400 hover:text-red-500 px-2 py-1 text-lg leading-none transition"
+                  aria-label="사진 삭제"
+                  title="삭제"
+                >×</button>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-            💡 iOS 사진이 HEIC 포맷이면 EXIF가 안 읽힐 수 있습니다.<br/>
+            💡 iOS 사진이 HEIC면 EXIF가 안 읽힐 수 있습니다.<br/>
             설정 → 카메라 → 포맷 → <b>호환성 우선</b>으로 바꾸거나,<br/>
-            전송 시 <b>원본 그대로</b> / <b>모든 사진 데이터</b> 옵션 선택하세요.<br/>
-            카톡/텔레그램으로 받은 사진은 GPS가 삭제됩니다 — 갤러리에서 직접 선택!
+            전송 시 <b>모든 사진 데이터</b> 옵션을 선택하세요.<br/>
+            카톡/텔레그램으로 받은 사진은 GPS가 삭제됩니다!
           </p>
         </section>
       )}

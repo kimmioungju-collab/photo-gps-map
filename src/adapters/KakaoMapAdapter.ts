@@ -1,4 +1,4 @@
-import type { PhotoMeta } from '../types/photo';
+import type { LatLng, PhotoMeta } from '../types/photo';
 import type { MapAdapter } from './MapAdapter';
 
 declare global {
@@ -40,25 +40,10 @@ export class KakaoMapAdapter implements MapAdapter {
 
   setMarkers(photos: PhotoMeta[], onClick: (p: PhotoMeta) => void): void {
     const { kakao } = window;
-    this.clearMarkers();
+    this.clearOverlays();
     if (!this.map) return;
 
     const gpsPhotos = photos.filter((p) => p.hasGps);
-
-    // Route polyline connecting photos in order
-    if (gpsPhotos.length >= 2) {
-      const path = gpsPhotos.map((p) => new kakao.maps.LatLng(p.lat!, p.lng!));
-      this.polyline = new kakao.maps.Polyline({
-        path,
-        strokeWeight: 4,
-        strokeColor: '#2563eb',
-        strokeOpacity: 0.85,
-        strokeStyle: 'solid',
-      });
-      this.polyline.setMap(this.map);
-    }
-
-    // Photo thumbnail markers
     gpsPhotos.forEach((p) => {
       const pos = new kakao.maps.LatLng(p.lat!, p.lng!);
       const wrap = document.createElement('div');
@@ -81,6 +66,22 @@ export class KakaoMapAdapter implements MapAdapter {
     });
   }
 
+  setRoute(path: LatLng[]): void {
+    const { kakao } = window;
+    this.clearRoute();
+    if (!this.map || path.length < 2) return;
+
+    const points = path.map((p) => new kakao.maps.LatLng(p.lat, p.lng));
+    this.polyline = new kakao.maps.Polyline({
+      path: points,
+      strokeWeight: 5,
+      strokeColor: '#2563eb',
+      strokeOpacity: 0.9,
+      strokeStyle: 'solid',
+    });
+    this.polyline.setMap(this.map);
+  }
+
   fitBounds(photos: PhotoMeta[]): void {
     const { kakao } = window;
     if (!this.map) return;
@@ -93,17 +94,28 @@ export class KakaoMapAdapter implements MapAdapter {
     }
     const bounds = new kakao.maps.LatLngBounds();
     gps.forEach((p) => bounds.extend(new kakao.maps.LatLng(p.lat!, p.lng!)));
-    this.map.setBounds(bounds, 60, 60, 60, 60); // padding for thumbnails
+    this.map.setBounds(bounds, 60, 60, 60, 60);
+  }
+
+  centerOn(lat: number, lng: number, zoomLevel = 3): void {
+    const { kakao } = window;
+    if (!this.map) return;
+    const pos = new kakao.maps.LatLng(lat, lng);
+    this.map.setLevel(zoomLevel, { animate: true });
+    this.map.panTo(pos);
   }
 
   destroy(): void {
-    this.clearMarkers();
+    this.clearOverlays();
+    this.clearRoute();
     this.map = null;
   }
 
-  private clearMarkers() {
+  private clearOverlays() {
     this.overlays.forEach((o) => o.setMap(null));
     this.overlays = [];
+  }
+  private clearRoute() {
     if (this.polyline) { this.polyline.setMap(null); this.polyline = null; }
   }
 }
