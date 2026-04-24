@@ -1,6 +1,13 @@
 import { usePhotoStore } from '../store/photoStore';
 import { formatDate } from '../utils/exif';
 
+function formatGap(ms: number): string {
+  if (ms < 60_000) return `+${Math.round(ms / 1000)}초`;
+  if (ms < 3_600_000) return `+${Math.round(ms / 60_000)}분`;
+  if (ms < 86_400_000) return `+${(ms / 3_600_000).toFixed(1)}시간`;
+  return `+${Math.round(ms / 86_400_000)}일`;
+}
+
 export default function PhotoList() {
   const { photos, selectedId, select } = usePhotoStore();
 
@@ -18,26 +25,37 @@ export default function PhotoList() {
   return (
     <div className="space-y-4">
       <section>
-        <h3 className="font-semibold text-slate-800 mb-2">
+        <h3 className="font-semibold text-slate-800 mb-1">
           GPS 포함 ({gpsPhotos.length})
         </h3>
+        <p className="text-[11px] text-slate-500 mb-2">📅 촬영시간 오름차순 정렬</p>
         <ul className="space-y-1">
-          {gpsPhotos.map((p) => (
-            <li
-              key={p.id}
-              onClick={() => select(p.id)}
-              className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
-                selectedId === p.id ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-slate-50'
-              }`}
-            >
-              <span className="num-marker shrink-0">{p.index}</span>
-              <img src={p.previewUrl} alt="" className="w-10 h-10 object-cover rounded" />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{p.name}</div>
-                <div className="text-xs text-slate-500">{formatDate(p.takenAt)}</div>
-              </div>
-            </li>
-          ))}
+          {gpsPhotos.map((p, i) => {
+            const prev = gpsPhotos[i - 1];
+            const gap =
+              prev && p.takenAt && prev.takenAt
+                ? p.takenAt.getTime() - prev.takenAt.getTime()
+                : null;
+            return (
+              <li
+                key={p.id}
+                onClick={() => select(p.id)}
+                className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
+                  selectedId === p.id ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-slate-50'
+                }`}
+              >
+                <span className="num-marker shrink-0">{p.index}</span>
+                <img src={p.previewUrl} alt="" className="w-10 h-10 object-cover rounded" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{p.name}</div>
+                  <div className="text-xs text-slate-500 flex gap-2">
+                    <span>{formatDate(p.takenAt)}</span>
+                    {gap !== null && <span className="text-blue-600">{formatGap(gap)}</span>}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

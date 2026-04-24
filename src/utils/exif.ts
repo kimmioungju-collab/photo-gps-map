@@ -53,12 +53,10 @@ export async function extractPhotoMeta(
     Number.isFinite(lat) && Number.isFinite(lng) &&
     !(lat === 0 && lng === 0);
 
-  // Fallback: try to read file lastModified for upload order tie-break
-  if (!takenAt && file.lastModified) {
-    const d = new Date(file.lastModified);
-    // only use if it looks reasonable (not epoch)
-    if (d.getFullYear() > 2000) takenAt = d;
-  }
+  // NOTE: We intentionally do NOT fall back to file.lastModified for takenAt.
+  // lastModified reflects file save/download time, not shooting time, which
+  // would break the "촬영 시간 순 정렬" contract. Photos without EXIF date
+  // stay null → sorted to the end with upload-order tie-break.
 
   if (debug) console.warn('[exif]', file.name, debug);
 
